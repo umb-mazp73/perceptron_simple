@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Perceptrón Simple - Compuerta AND</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <header class="app-header">
+    <h1>Neurona Artificial (Perceptrón Simple)</h1>
+    <p>Entrenamiento con la compuerta lógica AND — pesos, sesgo y evaluación 100% aleatorios</p>
+  </header>
+
+  <main class="app-main">
+    <section class="controls">
+      <button id="run-btn" class="primary-btn">Entrenar y evaluar de nuevo (aleatorio)</button>
+    </section>
+
+    <section class="summary" id="summary"></section>
+
+    <section class="charts">
+      <div class="chart-box">
+        <h2>Plano x1 / x2 y recta de decisión</h2>
+        <canvas id="boundary-chart" width="380" height="380"></canvas>
+        <div class="legend">
+          <span><i class="dot green"></i> Clase 1 (esperado)</span>
+          <span><i class="dot red"></i> Clase 0 (esperado)</span>
+          <span><i class="line"></i> Frontera de decisión aprendida</span>
+        </div>
+      </div>
+      <div class="chart-box">
+        <h2>Convergencia (errores por época)</h2>
+        <canvas id="convergence-chart" width="380" height="380"></canvas>
+      </div>
+    </section>
+
+    <section class="tables">
+      <h2>Tabla de entrenamiento (todas las épocas)</h2>
+      <div id="training-table" class="table-wrapper"></div>
+
+      <h2>Tabla de evaluación con valores reales aleatorios</h2>
+      <div id="evaluation-table" class="table-wrapper"></div>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    <p>Arquitectura: Domain → Application → Infrastructure → Presentation (Clean Architecture) | JavaScript orientado a objetos (ES Modules + clases)</p>
+  </footer>
+
+  <script type="module" src="main.js"></script>
+</body>
+</html>
