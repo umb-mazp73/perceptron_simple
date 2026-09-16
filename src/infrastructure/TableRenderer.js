@@ -103,13 +103,14 @@ export class TableRenderer {
     results.forEach((r) => {
       const row = document.createElement('tr');
       row.classList.add(r.correct ? 'row-success' : 'row-error');
+      if (r.manual) row.classList.add('row-manual');
       row.innerHTML = `
         <td>${r.index}</td>
         <td>${r.x1}</td>
         <td>${r.x2}</td>
         <td>${r.expected}</td>
         <td>${r.predicted}</td>
-        <td>${r.correct ? '✔ Correcto' : '✘ Incorrecto'}</td>
+        <td>${r.correct ? '✔ Correcto' : '✘ Incorrecto'}${r.manual ? ' · manual' : ''}</td>
       `;
       tbody.appendChild(row);
     });

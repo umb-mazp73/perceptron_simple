@@ -180,6 +180,69 @@ canvas { max-width: 100%; background: transparent; border-radius: 8px; }
 .data-table tr.row-success { background: rgba(29, 154, 95, 0.06); }
 .data-table tr.row-error { background: rgba(217, 67, 46, 0.06); }
 
+.data-table tr.row-manual td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+
+.eval-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.eval-manual {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.eval-input {
+  width: 90px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 0.9rem;
+  text-align: center;
+  font-family: inherit;
+  background: var(--panel);
+  color: inherit;
+}
+.eval-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.secondary-btn {
+  background: #1d1d1f;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 980px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  letter-spacing: -0.01em;
+  transition: background 0.2s ease, transform 0.1s ease;
+}
+.secondary-btn:hover { background: #000000; }
+.secondary-btn:active { transform: scale(0.97); }
+
+.ghost-btn {
+  background: transparent;
+  color: var(--warn);
+  border: 1px solid var(--border);
+  padding: 10px 20px;
+  border-radius: 980px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+.ghost-btn:hover { background: rgba(217, 67, 46, 0.08); }
+.ghost-btn:active { transform: scale(0.97); }
+
 .pagination {
   display: flex;
   align-items: center;
@@ -207,6 +270,43 @@ canvas { max-width: 100%; background: transparent; border-radius: 8px; }
 .pagination-info {
   font-size: 0.8rem;
   color: var(--muted);
+}
+
+.class-diagram { margin-top: 56px; }
+.class-diagram h2 {
+  font-size: 1.3rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  margin: 0 0 4px;
+}
+.diagram-subtitle {
+  margin: 0 0 16px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.diagram-wrapper {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  padding: 24px;
+  overflow-x: auto;
+}
+.diagram-wrapper svg { min-width: 640px; }
+
+.diagram-legend { margin-top: 16px; }
+.diagram-line { width: 22px; height: 2px; background: #8a8a92; display: inline-block; border-radius: 2px; position: relative; }
+.diagram-line.dashed { background: repeating-linear-gradient(90deg, #8a8a92 0 5px, transparent 5px 9px); }
+.diagram-line.diamond::before {
+  content: "";
+  position: absolute;
+  left: -3px;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  background: #3c3c42;
+  transform: translateY(-50%) rotate(45deg);
 }
 
 .app-footer {
