@@ -1,19 +1,30 @@
 import { AppController } from './src/presentation/AppController.js';
 
 window.addEventListener('DOMContentLoaded', () => {
+  const byId = (id) => document.getElementById(id);
+
   const app = new AppController({
-    runButton: document.getElementById('run-btn'),
-    summaryEl: document.getElementById('summary'),
-    trainingTableEl: document.getElementById('training-table'),
-    evaluationTableEl: document.getElementById('evaluation-table'),
-    boundaryCanvas: document.getElementById('boundary-chart'),
-    convergenceCanvas: document.getElementById('convergence-chart'),
-    manualX1Input: document.getElementById('manual-x1'),
-    manualX2Input: document.getElementById('manual-x2'),
-    evalManualButton: document.getElementById('eval-manual-btn'),
-    evalRandomButton: document.getElementById('eval-random-btn'),
-    evalClearButton: document.getElementById('eval-clear-btn'),
+    weightInputs: ['w1', 'w2', 'w3', 'w4'].map(byId),
+    thetaInput: byId('theta'),
+    rateInput: byId('rate'),
+    errorEl: byId('input-error'),
+    trainButton: byId('train-btn'),
+    classValuesButton: byId('class-values-btn'),
+    randomValuesButton: byId('random-values-btn'),
+    equationEl: byId('equation'),
+    statusEl: byId('status'),
+    truthTableEl: byId('truth-table'),
+    trainingTableEl: byId('training-table'),
+    evaluationTableEl: byId('evaluation-table'),
+    activationCanvas: byId('activation-chart'),
+    convergenceCanvas: byId('convergence-chart'),
+    manualInputs: ['m1', 'm2', 'm3', 'm4'].map(byId),
+    manualResultEl: byId('manual-result'),
+    accuracyEl: byId('accuracy'),
+    evalManualButton: byId('eval-manual-btn'),
+    evalAllButton: byId('eval-all-btn'),
+    evalClearButton: byId('eval-clear-btn'),
   });
 
-  app.run();
+  app.init();
 });

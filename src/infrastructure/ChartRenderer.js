@@ -1,12 +1,15 @@
 const PALETTE = {
-  axis: '#d2d2d7',
-  text: '#86868b',
-  boundary: '#8e57e0',
-  ok: '#1d9a5f',
-  warn: '#d9432e',
-  accent: '#0071e3',
+  axis: '#b9b9ad',
+  grid: '#e4e4da',
+  text: '#6b6b60',
+  curve: '#1f1f1b',
+  ok: '#2e7d4f',
+  warn: '#c0392b',
+  accent: '#2e7d4f',
   pointStroke: '#ffffff',
 };
+
+const COMPACT = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 2 });
 
 export class ChartRenderer {
   constructor(canvas) {
@@ -20,77 +23,89 @@ export class ChartRenderer {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
   }
 
-  #toPixel(x, y, min = -0.6, max = 1.6) {
-    const { width, height } = this.canvas;
-    const p = this.padding;
-    const px = p + ((x - min) / (max - min)) * (width - 2 * p);
-    const py = height - p - ((y - min) / (max - min)) * (height - 2 * p);
-    return [px, py];
-  }
-
-  #drawAxes(min = -0.6, max = 1.6) {
+  // Curva Y = tanh(net) con las 16 filas ubicadas según su entrada neta.
+  renderActivation(samples, perceptron) {
+    this.#clear();
     const { ctx, canvas } = this;
-    ctx.strokeStyle = PALETTE.axis;
-    ctx.fillStyle = PALETTE.text;
-    ctx.font = '11px -apple-system, sans-serif';
+    const p = this.padding;
+
+    const points = samples
+      .map((s) => ({ expected: s.expected, ...perceptron.predict(s.toInputs()) }))
+      .filter((pt) => Number.isFinite(pt.net));
+    const step = ChartRenderer.#niceStep(Math.max(3, ...points.map((pt) => Math.abs(pt.net))) / 4);
+    const range = step * Math.ceil((Math.max(3, ...points.map((pt) => Math.abs(pt.net))) + step / 2) / step);
+
+    const toPixel = (net, y) => [
+      p + ((net + range) / (2 * range)) * (canvas.width - 2 * p),
+      canvas.height - p - ((y + 1.2) / 2.4) * (canvas.height - 2 * p),
+    ];
+
+    // Regiones: Y ≥ 0 → 1 (verde), Y < 0 → −1 (rojo)
+    const [, yZero] = toPixel(0, 0);
+    const [xZero] = toPixel(0, 0);
+    ctx.fillStyle = 'rgba(46, 125, 79, 0.07)';
+    ctx.fillRect(xZero, p, canvas.width - p - xZero, yZero - p);
+    ctx.fillStyle = 'rgba(192, 57, 43, 0.07)';
+    ctx.fillRect(p, yZero, xZero - p, canvas.height - p - yZero);
+
+    // Rejilla y ejes
+    ctx.font = '11px "IBM Plex Mono", monospace';
     ctx.lineWidth = 1;
+    for (let k = -range / step; k <= range / step; k++) {
+      const v = k * step;
+      const [px] = toPixel(v, 0);
+      ctx.strokeStyle = v === 0 ? PALETTE.axis : PALETTE.grid;
+      ctx.beginPath();
+      ctx.moveTo(px, p);
+      ctx.lineTo(px, canvas.height - p);
+      ctx.stroke();
+      ctx.fillStyle = PALETTE.text;
+      const label = COMPACT.format(Number(v.toPrecision(6)));
+      ctx.fillText(label, px - ctx.measureText(label).width / 2, canvas.height - p + 16);
+    }
+    [-1, -0.5, 0, 0.5, 1].forEach((v) => {
+      const [, py] = toPixel(0, v);
+      ctx.strokeStyle = v === 0 ? PALETTE.axis : PALETTE.grid;
+      ctx.beginPath();
+      ctx.moveTo(p, py);
+      ctx.lineTo(canvas.width - p, py);
+      ctx.stroke();
+      ctx.fillStyle = PALETTE.text;
+      ctx.fillText(String(v), 6, py + 4);
+    });
+    ctx.fillText('net = Σwx − θ', canvas.width - p - 90, canvas.height - 6);
+    ctx.fillText('Y = tanh(net)', p, p - 12);
 
-    const [x0, y0] = this.#toPixel(min, 0, min, max);
-    const [x1, y1] = this.#toPixel(max, 0, min, max);
-    const [ox, oy0] = this.#toPixel(0, min, min, max);
-    const [, oy1] = this.#toPixel(0, max, min, max);
-
+    // Curva tanh
+    ctx.strokeStyle = PALETTE.curve;
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(x0, y0);
-    ctx.lineTo(x1, y1);
-    ctx.moveTo(ox, oy0);
-    ctx.lineTo(ox, oy1);
+    for (let i = 0; i <= 200; i++) {
+      const net = -range + (2 * range * i) / 200;
+      const [px, py] = toPixel(net, Math.tanh(net));
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
     ctx.stroke();
 
-    for (let v = Math.ceil(min); v <= Math.floor(max); v++) {
-      const [px] = this.#toPixel(v, 0, min, max);
-      const [, py] = this.#toPixel(0, v, min, max);
-      ctx.fillText(v.toString(), px + 2, canvas.height - this.padding + 14);
-      ctx.fillText(v.toString(), this.padding - 16, py + 3);
-    }
-
-    ctx.fillText('x1', canvas.width - this.padding + 8, oy0 + 4);
-    ctx.fillText('x2', ox - 4, this.padding - 10);
+    // Filas de la tabla
+    points.forEach((pt) => {
+      const [px, py] = toPixel(pt.net, pt.y);
+      ctx.beginPath();
+      ctx.arc(px, py, 6, 0, Math.PI * 2);
+      ctx.fillStyle = pt.expected === 1 ? PALETTE.ok : PALETTE.warn;
+      ctx.fill();
+      ctx.strokeStyle = pt.output === pt.expected ? PALETTE.pointStroke : '#000000';
+      ctx.lineWidth = pt.output === pt.expected ? 1.5 : 2.5;
+      ctx.stroke();
+    });
   }
 
-  renderDecisionBoundary(points, perceptron) {
-    this.#clear();
-    const min = -0.6;
-    const max = 1.6;
-    this.#drawAxes(min, max);
-
-    const [w1, w2] = perceptron.weights;
-    const b = perceptron.bias;
-
-    if (Math.abs(w2) > 1e-6) {
-      const y1 = -(w1 * min + b) / w2;
-      const y2 = -(w1 * max + b) / w2;
-      const [px1, py1] = this.#toPixel(min, y1, min, max);
-      const [px2, py2] = this.#toPixel(max, y2, min, max);
-      this.ctx.strokeStyle = PALETTE.boundary;
-      this.ctx.lineWidth = 2;
-      this.ctx.beginPath();
-      this.ctx.moveTo(px1, py1);
-      this.ctx.lineTo(px2, py2);
-      this.ctx.stroke();
-    }
-
-    points.forEach((p) => {
-      const expected = p.expected;
-      const [px, py] = this.#toPixel(p.x1, p.x2, min, max);
-      this.ctx.beginPath();
-      this.ctx.arc(px, py, 6, 0, Math.PI * 2);
-      this.ctx.fillStyle = expected === 1 ? PALETTE.ok : PALETTE.warn;
-      this.ctx.fill();
-      this.ctx.strokeStyle = PALETTE.pointStroke;
-      this.ctx.lineWidth = 1.5;
-      this.ctx.stroke();
-    });
+  // Paso 1, 2 ó 5 × 10^n, de modo que el eje tenga pocas marcas legibles.
+  static #niceStep(rough) {
+    const power = 10 ** Math.floor(Math.log10(rough));
+    const fraction = rough / power;
+    return (fraction <= 1 ? 1 : fraction <= 2 ? 2 : fraction <= 5 ? 5 : 10) * power;
   }
 
   renderConvergence(history) {
@@ -100,24 +115,28 @@ export class ChartRenderer {
     const maxEpoch = history.length;
     const maxError = Math.max(1, ...history.map((h) => h.totalErrors));
 
-    const toPixel = (epoch, errors) => {
-      const px = p + ((epoch - 1) / Math.max(1, maxEpoch - 1)) * (canvas.width - 2 * p);
-      const py = canvas.height - p - (errors / maxError) * (canvas.height - 2 * p);
-      return [px, py];
-    };
+    const toPixel = (epoch, errors) => [
+      p + ((epoch - 1) / Math.max(1, maxEpoch - 1)) * (canvas.width - 2 * p),
+      canvas.height - p - (errors / maxError) * (canvas.height - 2 * p),
+    ];
 
     ctx.strokeStyle = PALETTE.axis;
     ctx.fillStyle = PALETTE.text;
-    ctx.font = '11px -apple-system, sans-serif';
+    ctx.font = '11px "IBM Plex Mono", monospace';
+    ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(p, p);
     ctx.lineTo(p, canvas.height - p);
     ctx.lineTo(canvas.width - p, canvas.height - p);
     ctx.stroke();
-    ctx.fillText('Errores', 4, p - 6);
-    ctx.fillText('Época', canvas.width - p - 20, canvas.height - p + 20);
+    ctx.fillText('errores', 4, p - 12);
+    ctx.fillText('iteración', canvas.width - p - 50, canvas.height - p + 24);
+    ctx.fillText(String(maxError), p - 22, p + 4);
+    ctx.fillText('0', p - 14, canvas.height - p + 4);
+    ctx.fillText('1', p - 2, canvas.height - p + 14);
+    if (maxEpoch > 1) ctx.fillText(String(maxEpoch), canvas.width - p - 6, canvas.height - p + 14);
 
-    ctx.strokeStyle = PALETTE.accent;
+    ctx.strokeStyle = PALETTE.curve;
     ctx.lineWidth = 2;
     ctx.beginPath();
     history.forEach((h, i) => {
@@ -131,7 +150,7 @@ export class ChartRenderer {
       const [px, py] = toPixel(h.epochNumber, h.totalErrors);
       ctx.beginPath();
       ctx.arc(px, py, 3.5, 0, Math.PI * 2);
-      ctx.fillStyle = h.totalErrors === 0 ? PALETTE.ok : PALETTE.accent;
+      ctx.fillStyle = h.totalErrors === 0 ? PALETTE.ok : PALETTE.warn;
       ctx.fill();
     });
   }

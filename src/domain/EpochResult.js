@@ -1,8 +1,8 @@
 export class EpochResult {
-  constructor(epochNumber, weights, bias, totalErrors, details) {
+  constructor(epochNumber, weights, theta, totalErrors, details) {
     this.epochNumber = epochNumber;
     this.weights = [...weights];
-    this.bias = bias;
+    this.theta = theta;
     this.totalErrors = totalErrors;
     this.details = details;
   }

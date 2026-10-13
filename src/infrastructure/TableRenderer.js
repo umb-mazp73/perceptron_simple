@@ -1,29 +1,33 @@
+import { formatNumber as fmt } from './formatNumber.js';
+
+const paren = (n, d = 2) => (n < 0 ? `(${fmt(n, d)})` : fmt(n, d));
+const bit = (v) => (v === 1 || v === -1 ? `<span class="${v === 1 ? 'pos' : 'neg'}">${v}</span>` : fmt(v, 2));
+
 export class TableRenderer {
-  renderTrainingHistory(container, history, epochsPerPage = 4) {
-    this.#renderPaginated(container, history, epochsPerPage, (pageEpochs) =>
-      this.#buildTrainingTable(pageEpochs),
-    );
+  renderTrainingHistory(container, history, learningRate) {
+    this.#renderPaginated(container, history, 1, ([epoch]) => this.#buildTrainingTable(epoch, learningRate), 'Iteración');
   }
 
-  renderEvaluation(container, results, rowsPerPage = 8) {
-    this.#renderPaginated(container, results, rowsPerPage, (pageResults) =>
-      this.#buildEvaluationTable(pageResults),
-    );
+  renderEvaluation(container, results, rowsPerPage = 16) {
+    this.#renderPaginated(container, results, rowsPerPage, (page) => this.#buildEvaluationTable(page), 'Página');
   }
 
-  #renderPaginated(container, items, pageSize, buildTableFn) {
+  #renderPaginated(container, items, pageSize, buildTableFn, label) {
     const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
     let currentPage = 1;
 
     const renderPage = () => {
       container.innerHTML = '';
+      if (items.length === 0) {
+        container.innerHTML = '<p class="empty">Sin datos todavía.</p>';
+        return;
+      }
       const start = (currentPage - 1) * pageSize;
-      const pageItems = items.slice(start, start + pageSize);
-      container.appendChild(buildTableFn(pageItems));
+      container.appendChild(buildTableFn(items.slice(start, start + pageSize)));
 
       if (totalPages > 1) {
         container.appendChild(
-          this.#buildPagination(currentPage, totalPages, (page) => {
+          this.#buildPagination(currentPage, totalPages, label, (page) => {
             currentPage = page;
             renderPage();
           }),
@@ -34,83 +38,100 @@ export class TableRenderer {
     renderPage();
   }
 
-  #buildPagination(currentPage, totalPages, onChange) {
+  #buildPagination(currentPage, totalPages, label, onChange) {
     const wrapper = document.createElement('div');
     wrapper.className = 'pagination';
 
-    const prevBtn = document.createElement('button');
-    prevBtn.type = 'button';
-    prevBtn.className = 'pagination-btn';
-    prevBtn.textContent = '‹ Anterior';
-    prevBtn.disabled = currentPage === 1;
-    prevBtn.addEventListener('click', () => onChange(currentPage - 1));
+    const makeBtn = (text, page, disabled) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'pagination-btn';
+      btn.textContent = text;
+      btn.disabled = disabled;
+      btn.addEventListener('click', () => onChange(page));
+      return btn;
+    };
 
     const info = document.createElement('span');
     info.className = 'pagination-info';
-    info.textContent = `Página ${currentPage} de ${totalPages}`;
+    info.textContent = `${label} ${currentPage} de ${totalPages}`;
 
-    const nextBtn = document.createElement('button');
-    nextBtn.type = 'button';
-    nextBtn.className = 'pagination-btn';
-    nextBtn.textContent = 'Siguiente ›';
-    nextBtn.disabled = currentPage === totalPages;
-    nextBtn.addEventListener('click', () => onChange(currentPage + 1));
-
-    wrapper.append(prevBtn, info, nextBtn);
+    wrapper.append(
+      makeBtn('« Primera', 1, currentPage === 1),
+      makeBtn('‹ Anterior', currentPage - 1, currentPage === 1),
+      info,
+      makeBtn('Siguiente ›', currentPage + 1, currentPage === totalPages),
+      makeBtn('Última »', totalPages, currentPage === totalPages),
+    );
     return wrapper;
   }
 
-  #buildTrainingTable(epochResults) {
+  #buildTrainingTable(epoch, learningRate) {
+    const wrapper = document.createElement('div');
+
+    const caption = document.createElement('p');
+    caption.className = 'table-caption';
+    caption.innerHTML = `Iteración <b>${epoch.epochNumber}</b> · errores en la iteración: <b class="${epoch.totalErrors === 0 ? 'ok' : 'warn'}">${epoch.totalErrors}</b>`;
+    wrapper.appendChild(caption);
+
     const table = document.createElement('table');
     table.className = 'data-table';
-
     table.appendChild(this.#buildHeader([
-      'Época', 'x1', 'x2', 'Esperado', 'Obtenido', 'Error', 'w1', 'w2', 'Bias', 'Errores en la época',
+      'Fila', 'x1', 'x2', 'x3', 'x4', 'w1', 'w2', 'w3', 'w4', 'θ', 'Y = tanh(Σwx − θ)', 'Salida', 'Esperado', '',
     ]));
 
     const tbody = document.createElement('tbody');
-    epochResults.forEach((epochResult) => {
-      epochResult.details.forEach((detail, idx) => {
-        const row = document.createElement('tr');
-        if (epochResult.totalErrors === 0) row.classList.add('row-success');
-        row.innerHTML = `
-          <td>${idx === 0 ? epochResult.epochNumber : ''}</td>
-          <td>${detail.x1}</td>
-          <td>${detail.x2}</td>
-          <td>${detail.expected}</td>
-          <td>${detail.predicted}</td>
-          <td>${detail.error}</td>
-          <td>${epochResult.weights[0].toFixed(4)}</td>
-          <td>${epochResult.weights[1].toFixed(4)}</td>
-          <td>${epochResult.bias.toFixed(4)}</td>
-          <td>${idx === 0 ? epochResult.totalErrors : ''}</td>
-        `;
-        tbody.appendChild(row);
-      });
+    epoch.details.forEach((d, idx) => {
+      const row = document.createElement('tr');
+      row.classList.add(d.correct ? 'row-success' : 'row-error');
+      row.innerHTML = `
+        <td>Y${idx + 1}</td>
+        ${d.inputs.map((x) => `<td>${bit(x)}</td>`).join('')}
+        ${d.weightsUsed.map((w) => `<td>${fmt(w, 2)}</td>`).join('')}
+        <td>${fmt(d.thetaUsed, 2)}</td>
+        <td>tanh(${fmt(d.net, 4)}) = ${fmt(d.y, 4)}</td>
+        <td>${bit(d.output)}</td>
+        <td>${bit(d.expected)}</td>
+        <td>${d.correct ? '✔' : '✘ reajusta'}</td>
+      `;
+      tbody.appendChild(row);
+
+      if (d.adjustment) {
+        const adj = document.createElement('tr');
+        adj.className = 'row-adjust';
+        const E = fmt(learningRate, 2);
+        const Y = paren(d.expected, 0);
+        const lines = d.weightsUsed.map(
+          (w, i) => `w${i + 1} = ${paren(w)} + 2 · ${E} · ${Y} · ${paren(d.inputs[i], 0)} = <b>${fmt(d.adjustment.weights[i], 2)}</b>`,
+        );
+        lines.push(`θ  = ${paren(d.thetaUsed)} + 2 · ${E} · ${Y} · (-1) = <b>${fmt(d.adjustment.theta, 2)}</b>`);
+        adj.innerHTML = `<td colspan="14"><div class="adjust-box">${lines.map((l) => `<code>${l}</code>`).join('')}</div></td>`;
+        tbody.appendChild(adj);
+      }
     });
 
     table.appendChild(tbody);
-    return table;
+    wrapper.appendChild(table);
+    return wrapper;
   }
 
   #buildEvaluationTable(results) {
     const table = document.createElement('table');
     table.className = 'data-table';
-
-    table.appendChild(this.#buildHeader(['#', 'x1 (real)', 'x2 (real)', 'Esperado', 'Predicho', 'Resultado']));
+    table.appendChild(this.#buildHeader(['#', 'x1', 'x2', 'x3', 'x4', 'net = Σwx − θ', 'Y = tanh(net)', 'Salida', 'Esperado', 'Resultado']));
 
     const tbody = document.createElement('tbody');
     results.forEach((r) => {
       const row = document.createElement('tr');
-      row.classList.add(r.correct ? 'row-success' : 'row-error');
-      if (r.manual) row.classList.add('row-manual');
+      if (r.correct !== null) row.classList.add(r.correct ? 'row-success' : 'row-error');
       row.innerHTML = `
         <td>${r.index}</td>
-        <td>${r.x1}</td>
-        <td>${r.x2}</td>
-        <td>${r.expected}</td>
-        <td>${r.predicted}</td>
-        <td>${r.correct ? '✔ Correcto' : '✘ Incorrecto'}${r.manual ? ' · manual' : ''}</td>
+        ${r.inputs.map((x) => `<td>${bit(x)}</td>`).join('')}
+        <td>${fmt(r.net, 4)}</td>
+        <td>${fmt(r.y, 6)}</td>
+        <td>${bit(r.output)}</td>
+        <td>${r.expected === null ? '—' : bit(r.expected)}</td>
+        <td>${r.correct === null ? 'fuera de la tabla' : r.correct ? '✔ Correcto' : '✘ Incorrecto'}</td>
       `;
       tbody.appendChild(row);
     });

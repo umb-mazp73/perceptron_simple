@@ -3,165 +3,105 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Perceptrón Simple - Compuerta AND</title>
+  <title>Perceptrón 4 entradas</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Serif:wght@600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/styles.css" />
 </head>
 <body>
-  <header class="app-header">
-    <h1>Neurona Artificial (Perceptrón Simple)</h1>
-    <p>Entrenamiento con la compuerta lógica AND — pesos y sesgo aleatorios, evaluación aleatoria o manual</p>
-  </header>
+  <main class="page">
+    <header class="hero">
+      <h1>Compuerta lógica de 4 entradas resuelta con un perceptrón</h1>
+      <div id="equation" class="equation">Y = tanh( … )</div>
+      <p class="rule">Y ≥ 0 → <b class="ok">1</b> · Y &lt; 0 → <b class="warn">−1</b></p>
 
-  <main class="app-main">
-    <section class="controls">
-      <button id="run-btn" class="primary-btn">Entrenar de nuevo (aleatorio)</button>
+      <div class="concepts">
+        <div><h3>Entradas (x)</h3><p>bipolares: 1 ó −1 (x1, x2, x3, x4)</p></div>
+        <div><h3>Pesos (w)</h3><p>arrancan en los valores iniciales y se reajustan</p></div>
+        <div><h3>Umbral (θ)</h3><p>se resta a la suma: w₁x₁ + w₂x₂ + w₃x₃ + w₄x₄ − θ</p></div>
+        <div><h3>Activación</h3><p>tangente hiperbólica (tanh), y el signo decide 1 ó −1</p></div>
+      </div>
+    </header>
+
+    <section class="grid-2">
+      <div class="panel">
+        <h2>valores iniciales</h2>
+        <div class="inputs">
+          <label>w1<input id="w1" type="number" step="any" /></label>
+          <label>w2<input id="w2" type="number" step="any" /></label>
+          <label>w3<input id="w3" type="number" step="any" /></label>
+          <label>w4<input id="w4" type="number" step="any" /></label>
+          <label>θ (umbral)<input id="theta" type="number" step="any" /></label>
+          <label>E (tasa)<input id="rate" type="number" step="any" /></label>
+        </div>
+        <p id="input-error" class="input-error"></p>
+        <div class="buttons">
+          <button id="train-btn" class="btn primary" type="button">Entrenar</button>
+          <button id="class-values-btn" class="btn" type="button">Valores de clase</button>
+          <button id="random-values-btn" class="btn" type="button">Aleatorios</button>
+        </div>
+        <div id="status" class="status"></div>
+      </div>
+
+      <div class="panel">
+        <h2>regla de reajuste (si la salida ≠ esperado)</h2>
+        <div class="formula">
+          <code>w1 = w1 + 2 · E · Y · x1</code>
+          <code>w2 = w2 + 2 · E · Y · x2</code>
+          <code>w3 = w3 + 2 · E · Y · x3</code>
+          <code>w4 = w4 + 2 · E · Y · x4</code>
+          <code>θ&nbsp; = θ&nbsp; + 2 · E · Y · (−1)</code>
+        </div>
+        <p class="muted">Y es el valor esperado de la fila. Una iteración recorre las 16 filas; termina cuando una
+          iteración completa no tiene errores. Si pasa de 1000 iteraciones, se reinicia con valores aleatorios.</p>
+        <h2>tabla de la compuerta</h2>
+        <div id="truth-table" class="truth-wrapper"></div>
+      </div>
     </section>
 
-    <section class="summary" id="summary"></section>
-
-    <section class="charts">
-      <div class="chart-box">
-        <h2>Plano x1 / x2 y recta de decisión</h2>
-        <canvas id="boundary-chart" width="380" height="380"></canvas>
+    <section class="grid-2">
+      <div class="panel">
+        <h2>Y = tanh(net) — dónde cae cada fila</h2>
+        <canvas id="activation-chart" width="460" height="340"></canvas>
         <div class="legend">
-          <span><i class="dot green"></i> Clase 1 (esperado)</span>
-          <span><i class="dot red"></i> Clase 0 (esperado)</span>
-          <span><i class="line"></i> Frontera de decisión aprendida</span>
+          <span><i class="dot green"></i> esperado 1</span>
+          <span><i class="dot red"></i> esperado −1</span>
+          <span><i class="dot outlined"></i> mal clasificado</span>
         </div>
       </div>
-      <div class="chart-box">
-        <h2>Convergencia (errores por época)</h2>
-        <canvas id="convergence-chart" width="380" height="380"></canvas>
+      <div class="panel">
+        <h2>errores por iteración</h2>
+        <canvas id="convergence-chart" width="460" height="340"></canvas>
       </div>
     </section>
 
-    <section class="tables">
-      <h2>Tabla de entrenamiento (todas las épocas)</h2>
+    <section class="panel">
+      <h2>entrenamiento — cálculo fila por fila</h2>
       <div id="training-table" class="table-wrapper"></div>
-
-      <h2>Tabla de evaluación</h2>
-      <div class="eval-controls">
-        <div class="eval-manual">
-          <input type="number" id="manual-x1" class="eval-input" step="0.001" placeholder="x1" />
-          <input type="number" id="manual-x2" class="eval-input" step="0.001" placeholder="x2" />
-          <button id="eval-manual-btn" type="button" class="secondary-btn">Ejecutar (valores manuales)</button>
-        </div>
-        <button id="eval-random-btn" type="button" class="secondary-btn">Aleatorio</button>
-        <button id="eval-clear-btn" type="button" class="ghost-btn">Eliminar tabla</button>
-      </div>
-      <div id="evaluation-table" class="table-wrapper"></div>
     </section>
 
-    <section class="class-diagram">
-      <h2>Diagrama de clases</h2>
-      <p class="diagram-subtitle">Sin base de datos: dominio, casos de uso, infraestructura (vistas) y controlador</p>
-      <div class="diagram-wrapper">
-        <svg viewBox="0 0 967 790" width="967" height="790" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Diagrama de clases del perceptrón" style="width:100%;height:auto;display:block;">
-          <rect x="8" y="-6" width="951" height="186" rx="12" fill="none" stroke="#6341a3" stroke-width="1.3" stroke-opacity="0.55"/>
-          <text x="22" y="12" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="13" font-weight="700" fill="#6341a3" letter-spacing="0.04em">PRESENTATION</text>
-          <rect x="8" y="212" width="951" height="150" rx="12" fill="none" stroke="#1a6fb0" stroke-width="1.3" stroke-opacity="0.55"/>
-          <text x="22" y="230" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="13" font-weight="700" fill="#1a6fb0" letter-spacing="0.04em">APPLICATION</text>
-          <rect x="8" y="394" width="951" height="168" rx="12" fill="none" stroke="#b0601a" stroke-width="1.3" stroke-opacity="0.55"/>
-          <text x="22" y="412" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="13" font-weight="700" fill="#b0601a" letter-spacing="0.04em">INFRASTRUCTURE</text>
-          <rect x="8" y="594" width="951" height="186" rx="12" fill="none" stroke="#1c8a5a" stroke-width="1.3" stroke-opacity="0.55"/>
-          <text x="22" y="612" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="13" font-weight="700" fill="#1c8a5a" letter-spacing="0.04em">DOMAIN</text>
-          <line x1="478.2" y1="160.0" x2="472.4" y2="238.0" stroke="#8a8a92" stroke-width="1.6"/>
-          <polygon points="478.2,160.0 482.5,169.3 476.9,177.9 472.6,168.6" fill="#3c3c42"/>
-          <line x1="587.5" y1="160.0" x2="703.3" y2="238.0" stroke="#8a8a92" stroke-width="1.6" stroke-dasharray="6,5"/>
-          <polyline points="694.4,236.6 703.3,238.0 698.6,230.3" fill="none" stroke="#8a8a92" stroke-width="1.6"/>
-          <line x1="458.3" y1="160.0" x2="360.2" y2="433.0" stroke="#8a8a92" stroke-width="1.6"/>
-          <polygon points="458.3,160.0 460.0,170.1 452.3,176.9 450.6,166.8" fill="#3c3c42"/>
-          <line x1="507.9" y1="160.0" x2="598.7" y2="420.0" stroke="#8a8a92" stroke-width="1.6"/>
-          <polygon points="507.9,160.0 515.6,166.9 513.9,177.0 506.2,170.1" fill="#3c3c42"/>
-          <line x1="343.0" y1="290.0" x2="297.0" y2="290.0" stroke="#8a8a92" stroke-width="1.6"/>
-          <polygon points="343.0,290.0 334.0,294.9 325.0,290.0 334.0,285.1" fill="#3c3c42"/>
-          <line x1="467.9" y1="342.0" x2="464.8" y2="620.0" stroke="#8a8a92" stroke-width="1.6" stroke-dasharray="6,5"/>
-          <polyline points="461.1,611.8 464.8,620.0 468.7,611.9" fill="none" stroke="#8a8a92" stroke-width="1.6"/>
-          <line x1="174.5" y1="329.0" x2="198.5" y2="638.0" stroke="#8a8a92" stroke-width="1.6" stroke-dasharray="6,5"/>
-          <polyline points="194.0,630.2 198.5,638.0 201.6,629.6" fill="none" stroke="#8a8a92" stroke-width="1.6"/>
-          <line x1="705.4" y1="342.0" x2="277.6" y2="638.0" stroke="#8a8a92" stroke-width="1.6" stroke-dasharray="6,5"/>
-          <polyline points="282.2,630.2 277.6,638.0 286.5,636.5" fill="none" stroke="#8a8a92" stroke-width="1.6"/>
-          <line x1="739.4" y1="342.0" x2="519.4" y2="620.0" stroke="#8a8a92" stroke-width="1.6"/>
-          <polyline points="521.5,611.2 519.4,620.0 527.4,616.0" fill="none" stroke="#8a8a92" stroke-width="1.6"/>
-          <line x1="574.5" y1="542.0" x2="516.2" y2="620.0" stroke="#8a8a92" stroke-width="1.6"/>
-          <polyline points="518.1,611.2 516.2,620.0 524.2,615.7" fill="none" stroke="#8a8a92" stroke-width="1.6"/>
-          <line x1="435.3" y1="529.0" x2="652.7" y2="642.0" stroke="#8a8a92" stroke-width="1.6"/>
-          <polyline points="643.7,641.6 652.7,642.0 647.2,634.9" fill="none" stroke="#8a8a92" stroke-width="1.6"/>
-          <line x1="335.0" y1="690.0" x2="289.0" y2="690.0" stroke="#8a8a92" stroke-width="1.6"/>
-          <polyline points="297.2,686.2 289.0,690.0 297.2,693.8" fill="none" stroke="#8a8a92" stroke-width="1.6"/>
-          <line x1="593.0" y1="690.0" x2="639.0" y2="690.0" stroke="#8a8a92" stroke-width="1.6" stroke-dasharray="6,5"/>
-          <polyline points="630.8,693.8 639.0,690.0 630.8,686.2" fill="none" stroke="#8a8a92" stroke-width="1.6"/>
-          <rect x="346.5" y="20.0" width="274" height="140" rx="10" fill="#f1ecfb" stroke="#3c3c42" stroke-width="1.5"/>
-          <path d="M346.5,62.0 v-32 q0,-10 10,-10 h254 q10,0 10,10 v32 z" fill="#6341a3" stroke="#3c3c42" stroke-width="1.5"/>
-          <text x="483.5" y="36.0" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="10.5" fill="#ffffff">«controller»</text>
-          <text x="483.5" y="52.0" text-anchor="middle" font-weight="700" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="15" fill="#ffffff">AppController</text>
-          <text x="360.5" y="81.0" font-family="'SF Mono','DejaVu Sans Mono',Consolas,monospace" font-size="12.5" fill="#1d1d1f">- perceptron, evaluationResults</text>
-          <line x1="352.5" y1="87.0" x2="614.5" y2="87.0" stroke="#c8c8ce" stroke-width="1"/>
-          <text x="360.5" y="105.0" font-family="'SF Mono','DejaVu Sans Mono',Consolas,monospace" font-size="12.5" fill="#1d1d1f">+ run()</text>
-          <text x="360.5" y="123.0" font-family="'SF Mono','DejaVu Sans Mono',Consolas,monospace" font-size="12.5" fill="#1d1d1f">+ evaluar aleatorio / manual</text>
-          <text x="360.5" y="141.0" font-family="'SF Mono','DejaVu Sans Mono',Consolas,monospace" font-size="12.5" fill="#1d1d1f">+ limpiar evaluación</text>
-          <rect x="46.0" y="251.0" width="251" height="78" rx="10" fill="#e3f0fb" stroke="#3c3c42" stroke-width="1.5"/>
-          <path d="M46.0,293.0 v-32 q0,-10 10,-10 h231 q10,0 10,10 v32 z" fill="#1a6fb0" stroke="#3c3c42" stroke-width="1.5"/>
-          <text x="171.5" y="267.0" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="10.5" fill="#ffffff">«use case»</text>
-          <text x="171.5" y="283.0" text-anchor="middle" font-weight="700" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="15" fill="#ffffff">GenerateDatasetUseCase</text>
-          <text x="60.0" y="312.0" font-family="'SF Mono','DejaVu Sans Mono',Consolas,monospace" font-size="12.5" fill="#1d1d1f">+ execute(): Sample[]</text>
-          <rect x="343.0" y="238.0" width="251" height="104" rx="10" fill="#e3f0fb" stroke="#3c3c42" stroke-width="1.5"/>
-          <path d="M343.0,280.0 v-32 q0,-10 10,-10 h231 q10,0 10,10 v32 z" fill="#1a6fb0" stroke="#3c3c42" stroke-width="1.5"/>
-          <text x="468.5" y="254.0" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="10.5" fill="#ffffff">«use case»</text>
-          <text x="468.5" y="270.0" text-anchor="middle" font-weight="700" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="15" fill="#ffffff">TrainPerceptronUseCase</text>
-          <text x="357.0" y="299.0" font-family="'SF Mono','DejaVu Sans Mono',Consolas,monospace" font-size="12.5" fill="#1d1d1f">- maxEpochs</text>
-          <line x1="349.0" y1="305.0" x2="588.0" y2="305.0" stroke="#c8c8ce" stroke-width="1"/>
-          <text x="357.0" y="323.0" font-family="'SF Mono','DejaVu Sans Mono',Consolas,monospace" font-size="12.5" fill="#1d1d1f">+ execute()</text>
-          <rect x="640.0" y="238.0" width="281" height="104" rx="10" fill="#e3f0fb" stroke="#3c3c42" stroke-width="1.5"/>
-          <path d="M640.0,280.0 v-32 q0,-10 10,-10 h261 q10,0 10,10 v32 z" fill="#1a6fb0" stroke="#3c3c42" stroke-width="1.5"/>
-          <text x="780.5" y="254.0" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="10.5" fill="#ffffff">«use case»</text>
-          <text x="780.5" y="270.0" text-anchor="middle" font-weight="700" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="15" fill="#ffffff">EvaluatePerceptronUseCase</text>
-          <text x="654.0" y="299.0" font-family="'SF Mono','DejaVu Sans Mono',Consolas,monospace" font-size="12.5" fill="#1d1d1f">- sampleCount, noise</text>
-          <line x1="646.0" y1="305.0" x2="915.0" y2="305.0" stroke="#c8c8ce" stroke-width="1"/>
-          <text x="654.0" y="323.0" font-family="'SF Mono','DejaVu Sans Mono',Consolas,monospace" font-size="12.5" fill="#1d1d1f">+ execute(perceptron)</text>
-          <rect x="229.5" y="433.0" width="227" height="96" rx="10" fill="#fbeada" stroke="#3c3c42" stroke-width="1.5"/>
-          <path d="M229.5,475.0 v-32 q0,-10 10,-10 h207 q10,0 10,10 v32 z" fill="#b0601a" stroke="#3c3c42" stroke-width="1.5"/>
-          <text x="343.0" y="459.0" text-anchor="middle" font-weight="700" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="15" fill="#ffffff">TableRenderer</text>
-          <text x="243.5" y="494.0" font-family="'SF Mono','DejaVu Sans Mono',Consolas,monospace" font-size="12.5" fill="#1d1d1f">+ renderTrainingHistory()</text>
-          <text x="243.5" y="512.0" font-family="'SF Mono','DejaVu Sans Mono',Consolas,monospace" font-size="12.5" fill="#1d1d1f">+ renderEvaluation()</text>
-          <rect x="502.5" y="420.0" width="235" height="122" rx="10" fill="#fbeada" stroke="#3c3c42" stroke-width="1.5"/>
-          <path d="M502.5,462.0 v-32 q0,-10 10,-10 h215 q10,0 10,10 v32 z" fill="#b0601a" stroke="#3c3c42" stroke-width="1.5"/>
-          <text x="620.0" y="446.0" text-anchor="middle" font-weight="700" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="15" fill="#ffffff">ChartRenderer</text>
-          <text x="516.5" y="481.0" font-family="'SF Mono','DejaVu Sans Mono',Consolas,monospace" font-size="12.5" fill="#1d1d1f">- canvas</text>
-          <line x1="508.5" y1="487.0" x2="731.5" y2="487.0" stroke="#c8c8ce" stroke-width="1"/>
-          <text x="516.5" y="505.0" font-family="'SF Mono','DejaVu Sans Mono',Consolas,monospace" font-size="12.5" fill="#1d1d1f">+ renderDecisionBoundary()</text>
-          <text x="516.5" y="523.0" font-family="'SF Mono','DejaVu Sans Mono',Consolas,monospace" font-size="12.5" fill="#1d1d1f">+ renderConvergence()</text>
-          <rect x="116.0" y="638.0" width="173" height="104" rx="10" fill="#e0f5ec" stroke="#3c3c42" stroke-width="1.5"/>
-          <path d="M116.0,680.0 v-32 q0,-10 10,-10 h153 q10,0 10,10 v32 z" fill="#1c8a5a" stroke="#3c3c42" stroke-width="1.5"/>
-          <text x="202.5" y="664.0" text-anchor="middle" font-weight="700" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="15" fill="#ffffff">Sample</text>
-          <text x="130.0" y="699.0" font-family="'SF Mono','DejaVu Sans Mono',Consolas,monospace" font-size="12.5" fill="#1d1d1f">- x1, x2, expected</text>
-          <line x1="122.0" y1="705.0" x2="283.0" y2="705.0" stroke="#c8c8ce" stroke-width="1"/>
-          <text x="130.0" y="723.0" font-family="'SF Mono','DejaVu Sans Mono',Consolas,monospace" font-size="12.5" fill="#1d1d1f">+ toInputs()</text>
-          <rect x="335.0" y="620.0" width="258" height="140" rx="10" fill="#e0f5ec" stroke="#3c3c42" stroke-width="1.5"/>
-          <path d="M335.0,662.0 v-32 q0,-10 10,-10 h238 q10,0 10,10 v32 z" fill="#1c8a5a" stroke="#3c3c42" stroke-width="1.5"/>
-          <text x="464.0" y="646.0" text-anchor="middle" font-weight="700" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="15" fill="#ffffff">Perceptron</text>
-          <text x="349.0" y="681.0" font-family="'SF Mono','DejaVu Sans Mono',Consolas,monospace" font-size="12.5" fill="#1d1d1f">- weights, bias, learningRate</text>
-          <line x1="341.0" y1="687.0" x2="587.0" y2="687.0" stroke="#c8c8ce" stroke-width="1"/>
-          <text x="349.0" y="705.0" font-family="'SF Mono','DejaVu Sans Mono',Consolas,monospace" font-size="12.5" fill="#1d1d1f">+ predict(inputs)</text>
-          <text x="349.0" y="723.0" font-family="'SF Mono','DejaVu Sans Mono',Consolas,monospace" font-size="12.5" fill="#1d1d1f">+ train(samples)</text>
-          <text x="349.0" y="741.0" font-family="'SF Mono','DejaVu Sans Mono',Consolas,monospace" font-size="12.5" fill="#1d1d1f">+ learn(sample)</text>
-          <rect x="639.0" y="642.0" width="212" height="96" rx="10" fill="#e0f5ec" stroke="#3c3c42" stroke-width="1.5"/>
-          <path d="M639.0,684.0 v-32 q0,-10 10,-10 h192 q10,0 10,10 v32 z" fill="#1c8a5a" stroke="#3c3c42" stroke-width="1.5"/>
-          <text x="745.0" y="668.0" text-anchor="middle" font-weight="700" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="15" fill="#ffffff">EpochResult</text>
-          <text x="653.0" y="703.0" font-family="'SF Mono','DejaVu Sans Mono',Consolas,monospace" font-size="12.5" fill="#1d1d1f">- epochNumber, weights,</text>
-          <text x="653.0" y="721.0" font-family="'SF Mono','DejaVu Sans Mono',Consolas,monospace" font-size="12.5" fill="#1d1d1f">  bias, totalErrors</text>
-        </svg>
+    <section class="panel">
+      <h2>evaluación</h2>
+      <div class="eval-controls">
+        <div class="manual">
+          <label>x1<input id="m1" type="number" step="any" value="1" /></label>
+          <label>x2<input id="m2" type="number" step="any" value="1" /></label>
+          <label>x3<input id="m3" type="number" step="any" value="1" /></label>
+          <label>x4<input id="m4" type="number" step="any" value="1" /></label>
+          <button id="eval-manual-btn" class="btn primary" type="button">Evaluar</button>
+        </div>
+        <button id="eval-all-btn" class="btn" type="button">Evaluar las 16 filas</button>
+        <button id="eval-clear-btn" class="btn ghost" type="button">Limpiar tabla</button>
       </div>
-      <div class="legend diagram-legend">
-        <span><i class="diagram-line solid"></i> Asociación / usa</span>
-        <span><i class="diagram-line dashed"></i> Dependencia / crea instancia</span>
-        <span><i class="diagram-line diamond"></i> Composición (crea y posee)</span>
-      </div>
+      <p id="manual-result" class="manual-result"></p>
+      <p id="accuracy" class="accuracy"></p>
+      <div id="evaluation-table" class="table-wrapper"></div>
     </section>
   </main>
 
-  <footer class="app-footer">
-    <p>Arquitectura: Domain → Application → Infrastructure → Presentation (Clean Architecture) | JavaScript orientado a objetos (ES Modules + clases)</p>
+  <footer class="footer">
+    Perceptrón simple · 4 entradas bipolares · activación tangente hiperbólica ·
+    Domain → Application → Infrastructure → Presentation
   </footer>
 
   <script type="module" src="main.js"></script>
